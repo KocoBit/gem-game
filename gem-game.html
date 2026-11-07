@@ -50,7 +50,7 @@
     <button id="soundBtn">🔊 소리</button>
     <button id="newBtn">🔄 새 게임</button>
   </div>
-  <div class="help">같은 보석 3개 이상을 가로·세로로 맞추세요. 클릭 또는 드래그로 이웃한 보석과 자리를 바꿉니다.<br>4개를 맞추면 <b>폭탄 보석</b>(주변 3×3 제거), 5개를 맞추면 <b>무지개 보석</b>(같은 색 전부 제거)이 생겨요.</div>
+  <div class="help">같은 보석 3개 이상을 가로·세로로 맞추거나, 2×2 사각형으로 모으세요. 클릭 또는 드래그로 이웃한 보석과 자리를 바꿉니다.<br>4개를 맞추면 <b>폭탄 보석</b>(주변 3×3 제거), 5개를 맞추면 <b>무지개 보석</b>(같은 색 전부 제거)이 생겨요.</div>
 </div>
 
 <script>
@@ -134,7 +134,8 @@ function newGrid() {
       let t;
       do { t = randT(); } while (
         (c >= 2 && grid[r][c - 1].t === t && grid[r][c - 2].t === t) ||
-        (r >= 2 && grid[r - 1][c].t === t && grid[r - 2][c].t === t));
+        (r >= 2 && grid[r - 1][c].t === t && grid[r - 2][c].t === t) ||
+        (r >= 1 && c >= 1 && grid[r - 1][c].t === t && grid[r][c - 1].t === t && grid[r - 1][c - 1].t === t));
       const g = gem(t, r - N - 1, c); grid[r].push(g);
     }
   }
@@ -152,6 +153,13 @@ function findMatches() {
     let e = r + 1; while (e < N && sameColor(grid[r][c], grid[e][c])) e++;
     if (e - r >= 3) groups.push(Array.from({ length: e - r }, (_, i) => [r + i, c]));
     r = e;
+  }
+  // 2x2 squares
+  for (let r = 0; r < N - 1; r++) for (let c = 0; c < N - 1; c++) {
+    const a = grid[r][c];
+    if (sameColor(a, grid[r][c + 1]) && sameColor(a, grid[r + 1][c]) && sameColor(a, grid[r + 1][c + 1])) {
+      const g = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]]; g.square = true; groups.push(g);
+    }
   }
   return groups;
 }
@@ -242,7 +250,7 @@ async function resolve(focus, preset) {
     // detect cross shapes: count cells that appear in groups
     for (const g of groups) {
       g.forEach(([r, c]) => clear.add(r * N + c));
-      if (g.length >= 4) {
+      if (g.length >= 4 && !g.square) {
         let pos = g.find(([r, c]) => focus && r === focus[0] && c === focus[1]) || g[Math.floor(g.length / 2)];
         if (!creates.some(cr => cr.r === pos[0] && cr.c === pos[1]))
           creates.push({ r: pos[0], c: pos[1], t: grid[g[0][0]][g[0][1]].t, kind: g.length >= 5 ? 'rainbow' : 'bomb' });
